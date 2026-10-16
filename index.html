@@ -1,0 +1,1036 @@
+<title>Juno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: mobile-first app shell. Phone: one full-bleed screen at a time (Chat / Today / Memory / Notes / Settings) with a bottom tab bar. Desktop: chat + brain side by side. */
+:root {
+  --bg: #e9eeec;
+  --surface: #f7faf9;
+  --surface-2: #ffffff;
+  --ink: #12201d;
+  --muted: #586a66;
+  --line: #d3dcd9;
+  --accent: #0c7f73;
+  --accent-ink: #ffffff;
+  --accent-soft: #d4ece8;
+  --coral: #e2583c;
+  --user-bubble: #12201d;
+  --user-ink: #f2f7f5;
+  --ok: #2f8a4a;
+  --warn: #b26a00;
+  --shadow: 0 1px 2px rgba(18,32,29,.06), 0 8px 28px rgba(18,32,29,.08);
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --fs: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1112; --surface: #121a1c; --surface-2: #182225; --ink: #e4eeeb; --muted: #8d9f9b;
+    --line: #223033; --accent: #3fd0bd; --accent-ink: #062320; --accent-soft: #143a36; --coral: #ff8a6e;
+    --user-bubble: #e4eeeb; --user-ink: #0b1112; --ok: #5cc97a; --warn: #f0a640;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1112; --surface: #121a1c; --surface-2: #182225; --ink: #e4eeeb; --muted: #8d9f9b;
+  --line: #223033; --accent: #3fd0bd; --accent-ink: #062320; --accent-soft: #143a36; --coral: #ff8a6e;
+  --user-bubble: #e4eeeb; --user-ink: #0b1112; --ok: #5cc97a; --warn: #f0a640;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+:root.large { --fs: 19px; }
+
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: var(--fs); line-height: 1.5;
+  overflow: hidden; -webkit-tap-highlight-color: transparent;
+}
+* { box-sizing: border-box; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+kbd { font-family: var(--f-mono); font-size: .82em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 0 5px; background: var(--surface-2); }
+
+.app {
+  height: 100%;
+  display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px;
+  padding: 16px;
+  max-width: 1320px; margin: 0 auto;
+}
+
+/* ---------- main column ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.topbar { display: flex; align-items: center; gap: 8px; padding: 4px 4px 12px; }
+.brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.mini-orb { width: 34px; height: 34px; flex: none; display: none; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.55em; letter-spacing: -.02em; margin: 0; line-height: 1; }
+.status { font-family: var(--f-mono); font-size: .68em; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.status i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.status.on i { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+.status.local i { background: var(--warn); }
+.iconbtn {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); flex: none;
+}
+.iconbtn:hover { border-color: var(--accent); }
+.iconbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.iconbtn svg { width: 18px; height: 18px; }
+
+.stage {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.hero { display: flex; align-items: center; gap: 18px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.orbwrap { position: relative; width: 96px; height: 96px; flex: none; border-radius: 50%; }
+.orbwrap canvas { width: 100%; height: 100%; display: block; }
+.orbwrap button { position: absolute; inset: 0; border-radius: 50%; border: 0; background: transparent; }
+.hero-text { min-width: 0; }
+.hero-text h2 { font-family: var(--f-display); font-weight: 500; font-size: 1.45em; line-height: 1.15; margin: 0 0 4px; text-wrap: balance; letter-spacing: -.01em; }
+.hero-text p { margin: 0; color: var(--muted); font-size: .9em; }
+
+.chat { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; overscroll-behavior: contain; }
+.msg { max-width: min(700px, 88%); min-width: 0; }
+.msg.user { align-self: flex-end; background: var(--user-bubble); color: var(--user-ink); padding: 10px 14px; border-radius: 20px 20px 6px 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.user img { display: block; max-width: 180px; border-radius: 12px; margin-bottom: 6px; }
+.msg.bot { align-self: flex-start; overflow-wrap: anywhere; }
+.msg.bot .who { font-family: var(--f-mono); font-size: .68em; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+.msg.bot .body p { margin: 0 0 .6em; }
+.msg.bot .body p:last-child { margin-bottom: 0; }
+.msg.bot .body ul, .msg.bot .body ol { margin: .2em 0 .6em; padding-left: 1.3em; }
+.msg.bot .body li { margin-bottom: .2em; }
+.msg.bot .body code { font-family: var(--f-mono); font-size: .86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+.msg.bot .body pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; font-family: var(--f-mono); font-size: .84em; }
+.msg.bot .body h4 { font-family: var(--f-display); font-weight: 500; margin: .6em 0 .3em; font-size: 1.08em; }
+.msg.bot .body table { border-collapse: collapse; font-size: .9em; display: block; overflow-x: auto; }
+.msg.bot .body td, .msg.bot .body th { border-bottom: 1px solid var(--line); padding: 4px 10px 4px 0; text-align: left; }
+.thinking { color: var(--muted); display: inline-flex; gap: 8px; align-items: center; font-size: .9em; }
+.dots { display: inline-flex; gap: 4px; }
+.dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bob 1.1s infinite ease-in-out; }
+.dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes bob { 0%, 80%, 100% { transform: translateY(0); opacity: .4 } 40% { transform: translateY(-4px); opacity: 1 } }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.actions:empty { display: none; }
+.action-chip { font-family: var(--f-mono); font-size: .7em; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 9px; }
+.msg-tools { display: flex; gap: 4px; margin-top: 6px; }
+.msg-tools button { border: 0; background: none; color: var(--muted); font-size: .8em; padding: 4px 8px; border-radius: 8px; }
+.msg-tools button:hover { color: var(--accent); background: var(--accent-soft); }
+
+.suggest { display: flex; gap: 8px; padding: 0 22px 12px; overflow-x: auto; scrollbar-width: none; }
+.suggest::-webkit-scrollbar { display: none; }
+.suggest button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 7px 14px; font-size: .86em; white-space: nowrap; flex: none; }
+.suggest button:hover { border-color: var(--accent); color: var(--accent); }
+.suggest button.follow { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+.composer { padding: 10px 12px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+.attachments { display: flex; gap: 8px; padding: 0 0 8px; flex-wrap: wrap; }
+.attachments:empty { display: none; }
+.thumb { position: relative; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; line-height: 1; }
+.composer form { display: flex; align-items: flex-end; gap: 6px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 22px; padding: 5px 5px 5px 6px; }
+.composer form:focus-within { border-color: var(--accent); }
+.composer textarea { flex: 1; min-width: 0; resize: none; border: 0; background: transparent; outline: none; padding: 9px 4px; max-height: 160px; line-height: 1.4; font-size: max(16px, 1em); }
+.cbtn { width: 42px; height: 42px; border-radius: 16px; border: 0; background: transparent; display: grid; place-items: center; flex: none; color: var(--muted); }
+.cbtn:hover { color: var(--accent); }
+.cbtn svg { width: 20px; height: 20px; }
+.send { background: var(--accent); color: var(--accent-ink); }
+.send:hover { color: var(--accent-ink); }
+.send:disabled { opacity: .4; cursor: default; }
+.mic[aria-pressed="true"] { background: var(--coral); color: #fff; }
+.composer .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 2px 0; font-size: .78em; color: var(--muted); flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--bg); border-radius: 10px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 8px; padding: 4px 10px; color: var(--muted); font-size: .95em; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* ---------- brain panel ---------- */
+.brain { min-height: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; }
+.brain header { padding: 16px 18px 0; }
+.brain header h2 { font-family: var(--f-display); font-weight: 500; font-size: 1.15em; margin: 0 0 2px; }
+.brain header p { margin: 0 0 12px; color: var(--muted); font-size: .8em; }
+.tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: 10px 9px; font-size: .86em; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.count { font-family: var(--f-mono); font-size: .78em; background: var(--bg); border-radius: 999px; padding: 0 6px; color: var(--muted); font-weight: 400; }
+.panel { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 18px; overscroll-behavior: contain; }
+.panel-title { display: none; font-family: var(--f-display); font-weight: 700; font-size: 1.6em; letter-spacing: -.02em; margin: 0; }
+.section-label { font-family: var(--f-mono); font-size: .66em; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px; border-radius: 12px; }
+.item:hover { background: var(--bg); }
+.item .txt { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .94em; }
+.item .meta { display: block; font-family: var(--f-mono); font-size: .7em; color: var(--muted); margin-top: 1px; }
+.item.done .txt { text-decoration: line-through; color: var(--muted); }
+.item input[type=checkbox] { margin-top: 3px; accent-color: var(--accent); width: 19px; height: 19px; flex: none; }
+.del { border: 0; background: none; color: var(--muted); opacity: 0; padding: 0 6px; font-size: 1.2em; line-height: 1; min-height: 28px; }
+.item:hover .del, .del:focus-visible { opacity: 1; }
+@media (hover: none) { .del { opacity: .55; } }
+.empty { color: var(--muted); font-size: .86em; padding: 12px; border: 1px dashed var(--line); border-radius: 14px; }
+.add { display: flex; gap: 6px; margin-top: 8px; }
+.add input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 9px 12px; font-size: max(16px, .9em); }
+.add input:focus { outline: none; border-color: var(--accent); }
+.add button { border: 0; background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 0 14px; font-weight: 600; font-size: .88em; }
+.brief { border: 0; width: 100%; text-align: left; background: var(--user-bubble); color: var(--user-ink); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+.brief b { display: block; font-family: var(--f-display); font-weight: 500; font-size: 1.05em; }
+.brief span { font-size: .82em; opacity: .75; }
+.brief svg { width: 22px; height: 22px; flex: none; margin-left: auto; }
+.timer { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); }
+.timer .clock { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 1.25em; font-weight: 500; color: var(--accent); }
+.timer .txt { flex: 1; min-width: 0; font-size: .88em; overflow-wrap: anywhere; }
+.timer.ringing { background: var(--coral); color: #fff; }
+.timer.ringing .clock { color: #fff; }
+.timer button { border: 0; background: transparent; color: inherit; font-size: .82em; text-decoration: underline; padding: 6px; }
+.timers { display: flex; flex-direction: column; gap: 6px; }
+.note { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.note h4 { margin: 0 0 4px; font-size: .96em; font-weight: 600; display: flex; gap: 8px; }
+.note h4 span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.note p { margin: 0; color: var(--muted); font-size: .86em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note .del { opacity: .55; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.settings { display: flex; flex-direction: column; gap: 18px; }
+.settings label.toggle { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-radius: 10px; font-size: .94em; cursor: pointer; }
+.settings label.toggle:hover { background: var(--bg); }
+.settings input[type=checkbox] { accent-color: var(--accent); width: 19px; height: 19px; }
+.settings .help { margin: 0; font-size: .84em; color: var(--muted); }
+.dangerbtn { border: 1px solid var(--line); background: none; border-radius: 10px; padding: 9px 12px; font-size: .86em; color: var(--coral); }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .86em; }
+
+.bnav { display: none; }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: .9em; box-shadow: var(--shadow); z-index: 50; max-width: calc(100% - 32px); }
+@media (min-width: 901px) { .toast { bottom: 24px; } .only-phone { display: none !important; } }
+
+/* ---------- phone: app shell ---------- */
+@media (max-width: 900px) {
+  body { background: var(--surface); }
+  .app { display: flex; flex-direction: column; padding: 0; gap: 0; }
+  .main, .brain { flex: 1; min-height: 0; }
+  .app:not([data-view="chat"]) .main { display: none; }
+  .app[data-view="chat"] .brain { display: none; }
+  .brain header, .tabs { display: none; }
+  .panel-title { display: block; }
+  .stage, .brain { border: 0; border-radius: 0; box-shadow: none; }
+  .topbar { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .mini-orb { display: block; }
+  .desk-only { display: none !important; }
+  .hero { padding: 18px 16px 6px; border: 0; flex-direction: column; text-align: center; gap: 10px; }
+  .orbwrap { width: 120px; height: 120px; }
+  .hero-text p { max-width: 32ch; margin: 0 auto; }
+  .stage.chatting .hero { display: none; }
+  .chat { padding: 14px 16px; }
+  .msg { max-width: 92%; }
+  .suggest { padding: 0 16px 10px; }
+  .composer { padding: 8px 12px 10px; }
+  .panel { padding: 16px 16px 24px; }
+  .bnav {
+    display: grid; grid-template-columns: repeat(5, 1fr); flex: none;
+    border-top: 1px solid var(--line); background: var(--surface);
+    padding-bottom: 4px;
+  }
+  .bnav button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 4px; font-size: .68em; color: var(--muted); position: relative; }
+  .bnav button svg { width: 22px; height: 22px; }
+  .bnav button[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .bnav .badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 8px; background: var(--coral); color: #fff; font-size: 10px; line-height: 16px; padding: 0 4px; font-family: var(--f-mono); }
+  .bnav .badge:empty { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+
+<div class="app" id="app" data-view="chat">
+  <main class="main">
+    <div class="topbar">
+      <div class="brand">
+        <canvas class="mini-orb" id="miniOrb" width="68" height="68" aria-hidden="true"></canvas>
+        <h1>Juno</h1>
+        <span class="status" id="status" role="status"><i></i><span id="statusText">Waking up</span></span>
+      </div>
+      <button class="iconbtn" id="newBtn" title="New conversation" aria-label="New conversation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="iconbtn" id="voiceBtn" aria-pressed="false" title="Read answers aloud" aria-label="Read answers aloud">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      </button>
+      <button class="iconbtn desk-only" id="themeBtn" title="Switch light or dark" aria-label="Switch light or dark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+
+    <section class="stage" id="stage" aria-label="Conversation with Juno">
+      <div class="hero">
+        <div class="orbwrap">
+          <canvas id="orb" width="240" height="240" aria-hidden="true"></canvas>
+          <button id="orbBtn" aria-label="Talk to Juno"></button>
+        </div>
+        <div class="hero-text">
+          <h2 id="greeting">Good day. What can I take off your mind?</h2>
+          <p id="heroHint">Tap the orb to talk, or type below. I can think things through, read photos, plan, remember and set reminders.</p>
+        </div>
+      </div>
+
+      <div class="chat" id="chat" aria-live="polite" aria-relevant="additions"></div>
+
+      <div class="suggest" id="suggest" aria-label="Suggestions"></div>
+
+      <div class="composer">
+        <div class="attachments" id="attachments"></div>
+        <form id="form">
+          <input type="file" id="fileIn" accept="image/*" hidden>
+          <button type="button" class="cbtn" id="attachBtn" aria-label="Add a photo" title="Add a photo" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
+          </button>
+          <label for="input" class="sr">Message Juno</label>
+          <textarea id="input" rows="1" placeholder="Ask Juno anything…" autocomplete="off"></textarea>
+          <button type="button" class="cbtn mic" id="micBtn" aria-pressed="false" aria-label="Speak instead of typing" title="Speak" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg>
+          </button>
+          <button class="cbtn send" id="sendBtn" aria-label="Send" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="sendIcon"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+        </form>
+        <div class="row">
+          <div class="seg" role="group" aria-label="Thinking level">
+            <button type="button" data-mode="fast" aria-pressed="false" title="Fastest replies for simple things">Fast</button>
+            <button type="button" data-mode="smart" aria-pressed="true" title="Thinks before answering">Smart</button>
+            <button type="button" data-mode="genius" aria-pressed="false" title="Claude's most capable model, thinks hard">Genius</button>
+          </div>
+          <span class="desk-only"><kbd>/</kbd> type · <kbd>Esc</kbd> stop</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="brain" id="brain" aria-label="Juno's brain">
+    <header>
+      <h2>Brain</h2>
+      <p id="brainSub">Everything Juno keeps for you, private to your account.</p>
+    </header>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-today" aria-selected="true" aria-controls="p-today">Today <span class="count" id="c-today">0</span></button>
+      <button role="tab" id="tab-memory" aria-selected="false" aria-controls="p-memory">Memory <span class="count" id="c-memory">0</span></button>
+      <button role="tab" id="tab-notes" aria-selected="false" aria-controls="p-notes">Notes <span class="count" id="c-notes">0</span></button>
+      <button role="tab" id="tab-settings" aria-selected="false" aria-controls="p-settings">Settings</button>
+    </div>
+
+    <div class="panel" role="tabpanel" id="p-today" aria-labelledby="tab-today">
+      <h2 class="panel-title">Today</h2>
+      <button class="brief" id="briefBtn">
+        <div><b>Brief me</b><span id="briefSub">A plan for today from your tasks and what Juno knows</span></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div>
+        <p class="section-label">Timers &amp; reminders</p>
+        <div id="timers" class="timers"></div>
+      </div>
+      <div>
+        <p class="section-label">Tasks</p>
+        <ul class="list" id="tasks"></ul>
+        <form class="add" id="taskForm"><label for="taskIn" class="sr">New task</label><input id="taskIn" placeholder="Add a task"><button>Add</button></form>
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="p-memory" aria-labelledby="tab-memory" hidden>
+      <h2 class="panel-title">Memory</h2>
+      <div>
+        <p class="section-label">What Juno knows about you</p>
+        <ul class="list" id="facts"></ul>
+        <form class="add" id="factForm"><label for="factIn" class="sr">New memory</label><input id="factIn" placeholder="e.g. I'm vegetarian"><button>Save</button></form>
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="p-notes" aria-labelledby="tab-notes" hidden>
+      <h2 class="panel-title">Notes</h2>
+      <div id="notes" class="notes"></div>
+      <form class="add" id="noteForm"><label for="noteIn" class="sr">New note</label><input id="noteIn" placeholder="Quick note"><button>Save</button></form>
+    </div>
+
+    <div class="panel" role="tabpanel" id="p-settings" aria-labelledby="tab-settings" hidden>
+      <h2 class="panel-title">Settings</h2>
+      <div class="settings">
+        <div>
+          <p class="section-label">Your name</p>
+          <form class="add" id="nameForm"><label for="nameIn" class="sr">Your name</label><input id="nameIn" placeholder="What should Juno call you?"><button>Save</button></form>
+        </div>
+        <div>
+          <p class="section-label">Voice &amp; display</p>
+          <label class="toggle">Read answers aloud <input type="checkbox" id="setVoice"></label>
+          <label class="toggle">Send automatically after I speak <input type="checkbox" id="setAutoSend" checked></label>
+          <label class="toggle">Larger text <input type="checkbox" id="setLarge"></label>
+          <label class="toggle">Dark mode <input type="checkbox" id="setDark"></label>
+        </div>
+        <div>
+          <p class="section-label">Thinking level</p>
+          <p class="help"><b>Fast</b> answers almost instantly. <b>Smart</b> thinks first and suits most things. <b>Genius</b> uses Claude's most capable model for hard problems and can take a minute.</p>
+        </div>
+        <div>
+          <p class="section-label">Install on your phone</p>
+          <p class="help">Open this page in the Claude app, then pin it from the page menu. Juno then sits in your sidebar and opens full screen with one tap.</p>
+        </div>
+        <div>
+          <p class="section-label">Reset</p>
+          <div id="resetArea"><button class="dangerbtn" id="clearChat">Clear conversation</button> <button class="dangerbtn" id="wipeAll">Erase everything</button></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <nav class="bnav" aria-label="Sections">
+    <button data-view="chat" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Juno</button>
+    <button data-view="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Today<span class="badge" id="b-today"></span></button>
+    <button data-view="memory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a5 5 0 0 0-5 5c-2 .5-3 2-3 4s1 3.5 3 4c0 2 1.5 4 5 5 3.5-1 5-3 5-5 2-.5 3-2 3-4s-1-3.5-3-4a5 5 0 0 0-5-5z"/><path d="M12 3v18"/></svg>Memory</button>
+    <button data-view="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>Notes</button>
+    <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const isPhone = () => matchMedia("(max-width: 900px)").matches;
+
+/* ---------------- state ---------------- */
+const blank = () => ({ name: "", facts: [], tasks: [], notes: [], history: [], settings: { voice: false, large: false, mode: "smart", autoSend: true } });
+let brain = blank();
+let docRef = null, sample = null, canTools = false, canImages = false;
+let saving = false, saveAgain = false, saveTimer = null;
+const LS = "juno-brain-v1";
+
+function lsGet() { try { return JSON.parse(localStorage.getItem(LS) || "null"); } catch { return null; } }
+function lsSet(v) { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} }
+function merge(v) {
+  const b = blank(); if (!v || typeof v !== "object") return b;
+  const out = { ...b, ...v, settings: { ...b.settings, ...(v.settings || {}) } };
+  if (!["fast", "smart", "genius"].includes(out.settings.mode)) out.settings.mode = out.settings.deep ? "genius" : "smart";
+  return out;
+}
+function save() {
+  brain.history = brain.history.slice(-60);
+  lsSet(brain);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 700);
+}
+async function flush() {
+  if (!docRef) return;
+  if (saving) { saveAgain = true; return; }
+  saving = true;
+  try { await docRef.set(JSON.parse(JSON.stringify(brain))); }
+  catch (e) { if (e && e.code === "quota_exceeded") toast("Juno's memory is full. Delete some notes or clear the chat."); }
+  saving = false;
+  if (saveAgain) { saveAgain = false; flush(); }
+}
+
+/* ---------------- ui helpers ---------------- */
+const chat = $("#chat");
+function toast(msg, ms = 3200) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms); }
+function setStatus(kind, text) { const s = $("#status"); s.className = "status " + kind; $("#statusText").textContent = text; }
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function inline(s) {
+  return s.replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+}
+function md(src) {
+  const parts = String(src).split(/```/);
+  let out = "";
+  parts.forEach((part, i) => {
+    if (i % 2) { out += "<pre>" + esc(part.replace(/^[a-z]*\n/, "")) + "</pre>"; return; }
+    const lines = esc(part).split("\n");
+    let list = null, para = [], table = null;
+    const flushP = () => { if (para.length) { out += "<p>" + inline(para.join("<br>")) + "</p>"; para = []; } };
+    const closeL = () => { if (list) { out += "</" + list + ">"; list = null; } };
+    const closeT = () => { if (table) { out += "<table>" + table.map((r, ri) => "<tr>" + r.map((c) => (ri ? "<td>" : "<th>") + inline(c) + (ri ? "</td>" : "</th>")).join("") + "</tr>").join("") + "</table>"; table = null; } };
+    for (const raw of lines) {
+      const l = raw.trimEnd();
+      let m;
+      if (/^\s*\|.*\|\s*$/.test(l)) {
+        flushP(); closeL();
+        if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;
+        (table = table || []).push(l.trim().slice(1, -1).split("|").map((c) => c.trim()));
+        continue;
+      }
+      closeT();
+      if (!l.trim()) { flushP(); closeL(); continue; }
+      if ((m = l.match(/^#{1,4}\s+(.*)/))) { flushP(); closeL(); out += "<h4>" + inline(m[1]) + "</h4>"; continue; }
+      if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { flushP(); if (list !== "ul") { closeL(); out += "<ul>"; list = "ul"; } out += "<li>" + inline(m[1]) + "</li>"; continue; }
+      if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { flushP(); if (list !== "ol") { closeL(); out += "<ol>"; list = "ol"; } out += "<li>" + inline(m[1]) + "</li>"; continue; }
+      closeL(); para.push(l);
+    }
+    flushP(); closeL(); closeT();
+  });
+  return out;
+}
+function plain(s) { return String(s).replace(/```[\s\S]*?```/g, " ").replace(/\|/g, " ").replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim(); }
+/* The model ends replies with "Follow-ups: a | b | c"; split that off for chips. */
+function splitFollow(text) {
+  const m = String(text).match(/\n?[ \t]*\**Follow[- ]?ups?\**:?\**[ \t]*([^\n]*)\s*$/i);
+  if (!m) return { body: text, follow: [] };
+  return { body: text.slice(0, m.index).trimEnd(), follow: m[1].split("|").map((s) => s.replace(/^[\s"*-]+|[\s"*]+$/g, "")).filter(Boolean).slice(0, 3) };
+}
+
+function chatting(on) { $("#stage").classList.toggle("chatting", on); }
+function addUser(text, imgUrls) {
+  const d = document.createElement("div"); d.className = "msg user";
+  (imgUrls || []).forEach((u) => { const im = document.createElement("img"); im.src = u; im.alt = "Attached photo"; d.append(im); });
+  d.append(document.createTextNode(text)); chat.append(d); chatting(true); scroll(); return d;
+}
+function addBot(text, opts = {}) {
+  const d = document.createElement("div"); d.className = "msg bot";
+  d.innerHTML = '<div class="who">Juno</div><div class="body"></div><div class="actions"></div>';
+  const body = d.querySelector(".body");
+  if (text != null) body.innerHTML = md(text);
+  chat.append(d); scroll();
+  if (text != null && !opts.noTools) addMsgTools(d, text);
+  return d;
+}
+function addMsgTools(d, text) {
+  const t = document.createElement("div"); t.className = "msg-tools";
+  const copy = document.createElement("button"); copy.textContent = "Copy";
+  copy.onclick = () => navigator.clipboard.writeText(text).then(() => toast("Copied"), () => toast("Copy is blocked here. Select the text instead."));
+  const say = document.createElement("button"); say.textContent = "Read aloud"; say.onclick = () => speak(text, true);
+  const keep = document.createElement("button"); keep.textContent = "Save as note";
+  keep.onclick = () => { const first = plain(text).split(/[.!?]/)[0].slice(0, 60) || "Note from Juno"; brain.notes.push({ id: uid(), title: first, body: text, at: Date.now() }); save(); renderBrain(); toast("Saved to Notes"); };
+  t.append(copy, say, keep); d.append(t);
+}
+function addChip(d, label) { const a = d.querySelector(".actions"); const c = document.createElement("span"); c.className = "action-chip"; c.textContent = label; a.append(c); scroll(); }
+function scroll() { chat.scrollTop = chat.scrollHeight; }
+
+const STARTERS = [
+  ["Plan my day", "Plan my day around my open tasks and anything you know about me."],
+  ["Remind me in 20 min", "Remind me to stretch in 20 minutes"],
+  ["What do you know about me?", "What do you remember about me?"],
+  ["Help me decide", "Help me make a decision. Ask me a few sharp questions first, one at a time."],
+  ["Teach me something", "Teach me one genuinely surprising idea in 5 sentences, then quiz me on it."],
+  ["Dinner idea", "Suggest a dinner I can cook tonight in 30 minutes, based on what you know about me."],
+];
+function setSuggestions(items, follow) {
+  const box = $("#suggest"); box.innerHTML = "";
+  items.forEach(([label, q]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.dataset.q = q; if (follow) b.className = "follow"; box.append(b); });
+  box.hidden = !items.length;
+}
+
+function greet() {
+  const h = new Date().getHours();
+  const part = h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  $("#greeting").textContent = `${part}${brain.name ? ", " + brain.name : ""}. What can I take off your mind?`;
+}
+
+/* ---------------- views (phone) + tabs (desktop) ---------------- */
+function setView(v) {
+  $("#app").dataset.view = v;
+  document.querySelectorAll(".bnav button").forEach((b) => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  if (v !== "chat") selectTab(v);
+  if (v === "chat") setTimeout(scroll, 0);
+}
+document.querySelectorAll(".bnav button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+document.querySelectorAll('[role="tab"]').forEach((tab) => {
+  tab.onclick = () => selectTab(tab.id.slice(4));
+  tab.onkeydown = (e) => {
+    const tabs = [...document.querySelectorAll('[role="tab"]')]; const i = tabs.indexOf(tab);
+    const j = e.key === "ArrowRight" ? (i + 1) % tabs.length : e.key === "ArrowLeft" ? (i + tabs.length - 1) % tabs.length : -1;
+    if (j >= 0) { tabs[j].focus(); tabs[j].click(); }
+  };
+});
+function selectTab(name) {
+  document.querySelectorAll('[role="tab"]').forEach((t) => t.setAttribute("aria-selected", String(t.id === "tab-" + name)));
+  document.querySelectorAll('[role="tabpanel"]').forEach((p) => (p.hidden = p.id !== "p-" + name));
+}
+
+/* ---------------- brain panel ---------------- */
+function fmtDay(t) { return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+function renderBrain() {
+  const open = brain.tasks.filter((t) => !t.done);
+  $("#c-today").textContent = open.length + timers.length;
+  $("#b-today").textContent = (open.length + timers.length) || "";
+  $("#c-memory").textContent = brain.facts.length;
+  $("#c-notes").textContent = brain.notes.length;
+  $("#briefSub").textContent = open.length ? `${open.length} open task${open.length > 1 ? "s" : ""}. Get a plan and the first step.` : "A plan for today from what Juno knows about you";
+
+  const tl = $("#tasks"); tl.innerHTML = "";
+  if (!brain.tasks.length) tl.innerHTML = '<li class="empty">No tasks yet. Add one below, or tell Juno "add call the dentist to my list".</li>';
+  [...brain.tasks].sort((a, b) => a.done - b.done).forEach((t) => {
+    const li = document.createElement("li"); li.className = "item" + (t.done ? " done" : "");
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = t.done; cb.id = "t-" + t.id;
+    cb.onchange = () => { t.done = cb.checked; save(); renderBrain(); };
+    const lab = document.createElement("label"); lab.className = "txt"; lab.htmlFor = cb.id; lab.textContent = t.text;
+    if (t.due) { const m = document.createElement("span"); m.className = "meta"; m.textContent = "due " + t.due; lab.append(m); }
+    li.append(cb, lab, delBtn("Delete task", () => { brain.tasks = brain.tasks.filter((x) => x !== t); save(); renderBrain(); }));
+    tl.append(li);
+  });
+
+  const fl = $("#facts"); fl.innerHTML = "";
+  if (!brain.facts.length) fl.innerHTML = '<li class="empty">Juno picks up lasting details as you talk, like your preferences, people and routines. You can also add them here.</li>';
+  brain.facts.forEach((f) => {
+    const li = document.createElement("li"); li.className = "item";
+    const s = document.createElement("span"); s.className = "txt"; s.textContent = f.text;
+    const m = document.createElement("span"); m.className = "meta"; m.textContent = "learned " + fmtDay(f.at); s.append(m);
+    li.append(s, delBtn("Forget this", () => { brain.facts = brain.facts.filter((x) => x !== f); save(); renderBrain(); }));
+    fl.append(li);
+  });
+
+  const nl = $("#notes"); nl.innerHTML = "";
+  if (!brain.notes.length) nl.innerHTML = '<div class="empty">Notes Juno writes for you land here. Try "make a packing list for a weekend in Lisbon and save it".</div>';
+  [...brain.notes].reverse().forEach((n) => {
+    const d = document.createElement("div"); d.className = "note";
+    const h = document.createElement("h4"); const sp = document.createElement("span"); sp.textContent = n.title;
+    h.append(sp, delBtn("Delete note", () => { brain.notes = brain.notes.filter((x) => x !== n); save(); renderBrain(); }));
+    const p = document.createElement("p"); p.textContent = n.body.length > 600 ? n.body.slice(0, 600) + "…" : n.body;
+    d.append(h, p); nl.append(d);
+  });
+  renderTimers();
+}
+function delBtn(label, fn) { const b = document.createElement("button"); b.className = "del"; b.setAttribute("aria-label", label); b.title = label; b.textContent = "×"; b.onclick = fn; return b; }
+
+/* ---------------- timers ---------------- */
+let timers = [];
+let audioCtx = null;
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    [0, .25, .5].forEach((o, i) => {
+      const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+      osc.frequency.value = i === 2 ? 1046 : 880; osc.type = "sine";
+      g.gain.setValueAtTime(0, now + o); g.gain.linearRampToValueAtTime(.25, now + o + .02); g.gain.exponentialRampToValueAtTime(.001, now + o + .22);
+      osc.connect(g).connect(audioCtx.destination); osc.start(now + o); osc.stop(now + o + .25);
+    });
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  } catch {}
+}
+function addTimer(seconds, label) {
+  seconds = Math.max(1, Math.min(86400, Math.round(Number(seconds) || 0)));
+  const t = { id: uid(), label: String(label || "Timer").slice(0, 120), end: Date.now() + seconds * 1000, ringing: false };
+  timers.push(t); renderBrain(); return t;
+}
+function fmtLeft(ms) { const s = Math.max(0, Math.ceil(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+function renderTimers() {
+  const box = $("#timers"); box.innerHTML = "";
+  if (!timers.length) { box.innerHTML = '<div class="empty">No timers running. Say "remind me to take the laundry out in 45 minutes". Timers ring while Juno is open.</div>'; return; }
+  timers.forEach((t) => {
+    const d = document.createElement("div"); d.className = "timer" + (t.ringing ? " ringing" : ""); d.dataset.id = t.id;
+    const c = document.createElement("span"); c.className = "clock"; c.textContent = t.ringing ? "0:00" : fmtLeft(t.end - Date.now());
+    const l = document.createElement("span"); l.className = "txt"; l.textContent = t.label;
+    const b = document.createElement("button"); b.textContent = t.ringing ? "Dismiss" : "Cancel";
+    b.onclick = () => { timers = timers.filter((x) => x !== t); renderBrain(); };
+    d.append(c, l, b); box.append(d);
+  });
+}
+setInterval(() => {
+  let changed = false;
+  for (const t of timers) {
+    if (!t.ringing && Date.now() >= t.end) {
+      t.ringing = true; changed = true; beep();
+      addBot("⏰ **" + t.label + "**. Time's up.", { noTools: true }); speak("Time's up: " + t.label, true);
+      toast("Time's up: " + t.label, 6000);
+    }
+  }
+  if (changed) renderBrain();
+  else document.querySelectorAll(".timer:not(.ringing)").forEach((el) => {
+    const t = timers.find((x) => x.id === el.dataset.id); if (t) el.querySelector(".clock").textContent = fmtLeft(t.end - Date.now());
+  });
+}, 500);
+
+/* ---------------- voice out ---------------- */
+const synth = window.speechSynthesis;
+function pickVoice() {
+  if (!synth) return null;
+  const vs = synth.getVoices(); const lang = (navigator.language || "en").slice(0, 2);
+  return vs.find((v) => /Samantha|Ava|Google UK English Female|Microsoft (Aria|Jenny)|Natural|Premium|Enhanced/i.test(v.name) && v.lang.startsWith(lang)) || vs.find((v) => v.lang.startsWith(lang)) || null;
+}
+function speak(text, force) {
+  if (!synth || (!brain.settings.voice && !force)) return;
+  try {
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(plain(text).slice(0, 1500));
+    const v = pickVoice(); if (v) u.voice = v;
+    u.rate = 1.03; u.onstart = () => (orbState = "speaking"); u.onend = u.onerror = () => { if (orbState === "speaking") orbState = "idle"; };
+    synth.speak(u);
+  } catch {}
+}
+
+/* ---------------- voice in ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false;
+const micBtn = $("#micBtn");
+if (SR) micBtn.hidden = false;
+function startListening() {
+  if (!SR) { toast("Voice input isn't available here. Tip: use your keyboard's mic key to dictate."); $("#input").focus(); return; }
+  if (listening) { rec && rec.stop(); return; }
+  try {
+    rec = new SR(); rec.lang = navigator.language || "en-US"; rec.interimResults = true; rec.continuous = false;
+    let finalText = "";
+    rec.onstart = () => { listening = true; orbState = "listening"; micBtn.setAttribute("aria-pressed", "true"); $("#input").placeholder = "Listening…"; };
+    rec.onresult = (e) => {
+      let interim = ""; finalText = "";
+      for (const r of e.results) (r.isFinal ? (finalText += r[0].transcript) : (interim += r[0].transcript));
+      $("#input").value = (finalText + interim).trim(); autosize();
+    };
+    rec.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") { toast("The microphone is blocked here. Use your keyboard's mic key to dictate instead.", 5000); micBtn.hidden = true; }
+      else if (e.error !== "no-speech" && e.error !== "aborted") toast("Didn't catch that. Try again or type.");
+    };
+    rec.onend = () => {
+      listening = false; if (orbState === "listening") orbState = "idle"; micBtn.setAttribute("aria-pressed", "false"); $("#input").placeholder = "Ask Juno anything…";
+      if (finalText.trim() && brain.settings.autoSend) send(finalText.trim()); else syncSend();
+    };
+    rec.start();
+  } catch { toast("Voice input couldn't start here. Use your keyboard's mic key instead."); micBtn.hidden = true; }
+}
+micBtn.onclick = startListening;
+$("#orbBtn").onclick = () => { if (busy) return stop(); if (SR && !micBtn.hidden) startListening(); else $("#input").focus(); };
+
+/* ---------------- photos ---------------- */
+let pending = []; // {file, url}
+$("#attachBtn").onclick = () => $("#fileIn").click();
+$("#fileIn").onchange = (e) => {
+  for (const f of e.target.files) if (f.type.startsWith("image/") && pending.length < 4) pending.push({ file: f, url: URL.createObjectURL(f) });
+  e.target.value = ""; renderPending(); syncSend();
+};
+function renderPending() {
+  const box = $("#attachments"); box.innerHTML = "";
+  pending.forEach((p, i) => {
+    const d = document.createElement("div"); d.className = "thumb";
+    const im = document.createElement("img"); im.src = p.url; im.alt = "Photo to send";
+    const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove photo");
+    x.onclick = () => { pending.splice(i, 1); renderPending(); syncSend(); };
+    d.append(im, x); box.append(d);
+  });
+}
+
+/* ---------------- the brain: tools ---------------- */
+function findBy(list, id) { const s = String(id); return list.find((x) => x.id === s) || list.find((x) => (x.text || x.title || "").toLowerCase().includes(s.toLowerCase())); }
+let currentBubble = null;
+const MATH = Object.getOwnPropertyNames(Math);
+function calc(expr) {
+  let e = String(expr).replace(/(\d),(\d{3})\b/g, "$1$2").replace(/\^/g, "**").replace(/×/g, "*").replace(/÷/g, "/").replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
+  if (!/^[\d\s+\-*/().,a-zA-Z_]*$/.test(e)) throw new Error("Unsupported characters");
+  for (const id of e.match(/[a-zA-Z_]+/g) || []) if (!MATH.includes(id)) throw new Error("Unknown name: " + id);
+  const v = Function("with(Math){return (" + e + ")}")();
+  if (typeof v !== "number" || !isFinite(v)) throw new Error("Not a finite number");
+  return +v.toPrecision(15);
+}
+const TOOLS = [
+  { name: "remember_fact", description: "Save a lasting fact about the user (preference, person, routine, goal, constraint) to long-term memory. Call it proactively whenever the user reveals something durable, even in passing. Don't save duplicates of facts already listed. Returns the new id.",
+    inputSchema: { type: "object", properties: { fact: { type: "string", description: "Short third-person fact, e.g. 'Is vegetarian', 'Sister is called Ana'" } }, required: ["fact"] },
+    execute: ({ fact }) => { const f = { id: uid(), text: String(fact).slice(0, 300), at: Date.now() }; brain.facts.push(f); save(); renderBrain(); chipFor("Remembered: " + f.text.slice(0, 40)); return { ok: true, id: f.id }; } },
+  { name: "forget_fact", description: "Delete or correct a memory: removes the fact with this id (or matching text). To correct, forget then remember the new version.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    execute: ({ id }) => { const f = findBy(brain.facts, id); if (!f) throw new Error("No such fact"); brain.facts = brain.facts.filter((x) => x !== f); save(); renderBrain(); chipFor("Forgot"); return { ok: true }; } },
+  { name: "add_task", description: "Add a to-do to the user's task list. due is an optional short human string like 'Fri' or 'tomorrow 3pm'. Returns the id.",
+    inputSchema: { type: "object", properties: { text: { type: "string" }, due: { type: "string" } }, required: ["text"] },
+    execute: ({ text, due }) => { const t = { id: uid(), text: String(text).slice(0, 200), due: due ? String(due).slice(0, 40) : "", done: false, at: Date.now() }; brain.tasks.push(t); save(); renderBrain(); chipFor("Task added"); return { ok: true, id: t.id }; } },
+  { name: "update_task", description: "Change a task by id (or matching text): action 'done', 'undo' or 'delete'.",
+    inputSchema: { type: "object", properties: { id: { type: "string" }, action: { type: "string", enum: ["done", "undo", "delete"] } }, required: ["id", "action"] },
+    execute: ({ id, action }) => { const t = findBy(brain.tasks, id); if (!t) throw new Error("No such task"); if (action === "delete") brain.tasks = brain.tasks.filter((x) => x !== t); else t.done = action === "done"; save(); renderBrain(); chipFor(action === "delete" ? "Task deleted" : action === "done" ? "Task done" : "Task reopened"); return { ok: true }; } },
+  { name: "save_note", description: "Save a new note (lists, plans, drafts, recipes, summaries). Returns the id.",
+    inputSchema: { type: "object", properties: { title: { type: "string" }, body: { type: "string" } }, required: ["title", "body"] },
+    execute: ({ title, body }) => { const n = { id: uid(), title: String(title).slice(0, 120), body: String(body).slice(0, 8000), at: Date.now() }; brain.notes.push(n); save(); renderBrain(); chipFor("Note saved"); return { ok: true, id: n.id }; } },
+  { name: "edit_note", description: "Replace the body (and optionally the title) of an existing note by id or matching title.",
+    inputSchema: { type: "object", properties: { id: { type: "string" }, body: { type: "string" }, title: { type: "string" } }, required: ["id", "body"] },
+    execute: ({ id, body, title }) => { const n = findBy(brain.notes, id); if (!n) throw new Error("No such note"); n.body = String(body).slice(0, 8000); if (title) n.title = String(title).slice(0, 120); save(); renderBrain(); chipFor("Note updated"); return { ok: true }; } },
+  { name: "read_note", description: "Return the full text of a note by id or matching title (the context only shows note previews).",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    execute: ({ id }) => { const n = findBy(brain.notes, id); if (!n) throw new Error("No such note"); chipFor("Read note"); return { title: n.title, body: n.body }; } },
+  { name: "set_timer", description: "Start a countdown timer or reminder that rings and speaks in this app. seconds = duration from now (for a clock time, compute the difference from the current time given in context). label = what it's for.",
+    inputSchema: { type: "object", properties: { seconds: { type: "number" }, label: { type: "string" } }, required: ["seconds", "label"] },
+    execute: ({ seconds, label }) => { const t = addTimer(seconds, label); chipFor("⏱ " + fmtLeft(t.end - Date.now()) + " · " + t.label.slice(0, 30)); return { ok: true, rings_at: new Date(t.end).toLocaleTimeString() }; } },
+  { name: "cancel_timer", description: "Cancel a running timer by matching label.",
+    inputSchema: { type: "object", properties: { label: { type: "string" } }, required: ["label"] },
+    execute: ({ label }) => { const t = timers.find((x) => x.label.toLowerCase().includes(String(label).toLowerCase())); if (!t) throw new Error("No such timer"); timers = timers.filter((x) => x !== t); renderBrain(); chipFor("Timer cancelled"); return { ok: true }; } },
+  { name: "calculate", description: "Exact arithmetic. Pass a JavaScript-style math expression using numbers, + - * / ** ( ) % and Math functions like sqrt, pow, log, round, PI. Use it for any non-trivial number (money, conversions, percentages, dates as day counts) instead of mental math.",
+    inputSchema: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] },
+    execute: ({ expression }) => { const v = calc(expression); chipFor("Calculated"); return { result: v }; } },
+  { name: "set_user_name", description: "Store what the user wants to be called.",
+    inputSchema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+    execute: ({ name }) => { brain.name = String(name).slice(0, 40); save(); greet(); $("#nameIn").value = brain.name; chipFor("Name saved"); return { ok: true }; } },
+];
+function chipFor(label) { if (currentBubble) addChip(currentBubble, label); }
+
+function context() {
+  const now = new Date();
+  const facts = brain.facts.map((f) => `- [${f.id}] ${f.text}`).join("\n") || "(nothing yet: learn about them as you talk)";
+  const tasks = brain.tasks.map((t) => `- [${t.id}] ${t.done ? "(done) " : ""}${t.text}${t.due ? " (due " + t.due + ")" : ""}`).join("\n") || "(none)";
+  const notes = brain.notes.slice(-12).map((n) => `- [${n.id}] ${n.title}: ${n.body.slice(0, 200).replace(/\n/g, " ")}`).join("\n") || "(none)";
+  const tm = timers.filter((t) => !t.ringing).map((t) => `- ${t.label}: ${fmtLeft(t.end - Date.now())} left`).join("\n") || "(none)";
+  return `You are Juno, the user's personal assistant: as capable as the best of Siri, Alexa and Gemini, but more thoughtful. You run inside the user's own app on their phone.
+
+Current time: ${now.toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })} (${Intl.DateTimeFormat().resolvedOptions().timeZone}, ISO ${now.toISOString()}).
+User's name: ${brain.name || "unknown (ask naturally at a good moment, then save it with set_user_name)"}.
+
+## What you know about the user (long-term memory)
+${facts}
+
+## Their tasks
+${tasks}
+
+## Their notes (previews; use read_note for full text)
+${notes}
+
+## Running timers
+${tm}
+
+## How to be excellent
+- Be genuinely smart: reason carefully, give specific, expert-quality answers with real numbers, names, steps and trade-offs. No filler, no generic advice, no "it depends" without saying on what.
+- Match length to the request. Quick question → 1-3 sentences, answer first. Planning, learning, writing, comparisons → structured answer with short headings or lists. Use tables for comparisons.
+- Personalise using memory whenever it's relevant (diet, family, job, location, goals), without reciting it.
+- ${canTools ? `Act, don't just talk. Use tools whenever they help:
+  • set_timer for any timer/reminder ("in 20 min", "at 6pm" → compute seconds from the current time).
+  • add_task / update_task for to-dos; save_note / edit_note for anything worth keeping (lists, plans, recipes, drafts).
+  • remember_fact proactively when the user reveals a durable detail about themselves, even in passing ("my wife Sara", "I'm training for a 10k"). Keep facts short. Fix outdated ones with forget_fact then remember_fact.
+  • calculate for any arithmetic that matters.
+  After acting, confirm in one short line.` : "Tools are unavailable in this view: say what you'd do and let the user add things by hand."}
+- When a request is ambiguous and the answer would really change, ask one sharp clarifying question; otherwise make a sensible assumption, state it in a few words, and answer.
+- Photos: when the user attaches one, look closely and be concrete (identify, read text, estimate, diagnose, suggest next steps).
+- You have no internet access in this app: no live weather, news, scores, prices or web search. If asked, say so in one line, then give the most useful thing you can (general knowledge with its date caveat, or how to check quickly).
+- Never claim you did something you didn't.
+- Finish EVERY reply with one final line in exactly this format, offering three short, specific next things the user would likely tap (under 6 words each, written as the user would say them):
+Follow-ups: first | second | third`;
+}
+
+/* ---------------- local fallback brain ---------------- */
+function localBrain(q) {
+  const s = q.toLowerCase().trim(); let m;
+  if ((m = s.match(/(\d+(?:\.\d+)?)\s*(second|sec|s|minute|min|m|hour|hr|h)s?\b/)) && /timer|remind|alarm|in \d/.test(s)) {
+    const n = parseFloat(m[1]); const unit = m[2][0]; const secs = n * (unit === "h" ? 3600 : unit === "m" ? 60 : 1);
+    const lm = q.match(/remind me to (.+?)(?: in \d|$)/i) || q.match(/for (?!\d)(.+)$/i);
+    const t = addTimer(secs, lm ? lm[1] : "Timer"); return `Timer set for **${fmtLeft(t.end - Date.now())}**: ${t.label}.`;
+  }
+  if ((m = q.match(/^remember(?: that)? (.+)/i))) { brain.facts.push({ id: uid(), text: m[1], at: Date.now() }); save(); renderBrain(); return "Got it. I'll remember that."; }
+  if ((m = q.match(/^(?:add|put) (.+?) (?:to|on) my (?:list|tasks|to-?do)/i)) || (m = q.match(/^(?:add task|todo|to-do)[: ]+(.+)/i))) { brain.tasks.push({ id: uid(), text: m[1], done: false, at: Date.now() }); save(); renderBrain(); return `Added **${m[1]}** to your tasks.`; }
+  if (/what time|the time/.test(s)) return "It's **" + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "**.";
+  if (/what('s| is) (the )?date|what day/.test(s)) return "Today is **" + new Date().toLocaleDateString(undefined, { dateStyle: "full" }) + "**.";
+  if (/remember about me|know about me/.test(s)) return brain.facts.length ? "Here's what I know:\n" + brain.facts.map((f) => "- " + f.text).join("\n") : "Nothing yet. Tell me something to remember.";
+  try { const v = calc(s.replace(/^(what is|what's|calculate|calc)\s*/, "").replace(/\?$/, "")); if (/\d/.test(s)) return "That's **" + v + "**."; } catch {}
+  return "My thinking brain needs Claude, which isn't connected in this view. Open Juno inside the Claude app and allow it to use Claude when asked. Meanwhile I can set timers, keep tasks, remember things, do maths and tell the time.";
+}
+
+/* ---------------- send ---------------- */
+let busy = false, ctl = null;
+const input = $("#input"), sendBtn = $("#sendBtn");
+function autosize() { input.style.height = "auto"; input.style.height = Math.min(160, input.scrollHeight) + "px"; syncSend(); }
+function syncSend() { sendBtn.disabled = !busy && !input.value.trim() && !pending.length; }
+function setBusy(b) {
+  busy = b; orbState = b ? "thinking" : "idle";
+  $("#sendIcon").innerHTML = b ? '<rect x="7" y="7" width="10" height="10" rx="2"/>' : '<path d="M12 19V5M6 11l6-6 6 6"/>';
+  sendBtn.setAttribute("aria-label", b ? "Stop" : "Send"); syncSend();
+}
+function stop() { ctl && ctl.abort(); synth && synth.cancel(); if (listening && rec) rec.stop(); }
+
+const TIERS = { fast: { modelTier: "quick" }, smart: { modelTier: "default" }, genius: { modelTier: "complex", effort: "high" } };
+const WAIT = ["Thinking", "Thinking it through", "Working on it", "Almost there"];
+
+async function send(text) {
+  text = (text || "").trim();
+  const imgs = pending.slice();
+  if ((!text && !imgs.length) || busy) return;
+  if (!text) text = "What's in this photo? Tell me anything useful about it.";
+  input.value = ""; pending = []; renderPending(); autosize();
+  setSuggestions([]);
+  addUser(text, imgs.map((p) => p.url));
+  brain.history.push({ role: "user", content: imgs.length ? `[${imgs.length} photo${imgs.length > 1 ? "s" : ""} attached] ${text}` : text });
+  const bubble = addBot(null, { noTools: true }); currentBubble = bubble;
+  const body = bubble.querySelector(".body");
+  setBusy(true);
+
+  let answer = "", follow = [];
+  if (!sample) {
+    answer = localBrain(text);
+    body.innerHTML = md(answer);
+  } else {
+    ctl = new AbortController();
+    const t0 = Date.now(); let started = false;
+    const paint = () => { const s = Math.round((Date.now() - t0) / 1000); body.innerHTML = `<span class="thinking"><span class="dots"><span></span><span></span><span></span></span>${WAIT[Math.min(WAIT.length - 1, Math.floor(s / 12))]}${s > 3 ? " · " + s + "s" : ""}</span>`; };
+    paint(); const waitTimer = setInterval(() => { if (!started) paint(); }, 1000);
+
+    const turns = brain.history.slice(-30);
+    while (turns.length && turns[0].role !== "user") turns.shift();
+    const input0 = [{ role: "user", content: context() }, { role: "assistant", content: "Understood. I'm Juno, ready." }, ...turns];
+    const opts = { signal: ctl.signal, ...TIERS[brain.settings.mode || "smart"],
+      onText: ({ text }) => { started = true; orbState = "speaking"; body.innerHTML = md(splitFollow(text).body); scroll(); } };
+    if (canTools) opts.tools = TOOLS; else opts.cache = false;
+    if (imgs.length && canImages) opts.images = imgs.map((p) => p.file);
+    try {
+      const r = await sample(input0, opts);
+      ({ body: answer, follow } = splitFollow(r.text));
+      body.innerHTML = md(answer);
+      if (r.truncated) addChip(bubble, "Cut short");
+      if (brain.settings.mode === "genius" && r.modelTierApplied && r.modelTierApplied !== "complex") addChip(bubble, "Genius not on your plan; used " + r.modelTierApplied);
+    } catch (e) {
+      answer = e && e.text ? splitFollow(e.text).body : "";
+      const code = e && e.code;
+      const say = (m) => (body.innerHTML = (answer ? md(answer) : "") + '<p style="color:var(--muted)">' + m + "</p>");
+      if (code === "cancelled") say(answer ? "" : "Stopped.");
+      else if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) {
+        sample = null; setStatus("local", "Basic mode");
+        answer = localBrain(text); body.innerHTML = md(answer);
+      } else if (code === "tools_unavailable") { canTools = false; say("Actions aren't available in this view. Send that again and I'll answer without them."); }
+      else if (code === "images_unavailable" || code === "image_rejected") { canImages = false; $("#attachBtn").hidden = true; say("I can't look at photos in this view. Describe it in words and I'll help."); }
+      else if (code === "rate_limited") say("You've hit your Claude usage limit for now. Try again in a little while, or switch to Fast.");
+      else if (code === "refused") { answer = ""; say("I can't help with that one. Try asking it differently."); }
+      else if (code === "session_expired") say("Your Claude session expired. Sign in again, then retry.");
+      else if (code === "prompt_too_large") say("This conversation got too long. Tap + to start a new one; your memory, tasks and notes stay.");
+      else say("The connection dropped. Send your message again to retry.");
+    } finally { clearInterval(waitTimer); }
+  }
+  if (answer) { brain.history.push({ role: "assistant", content: answer }); addMsgTools(bubble, answer); speak(answer); }
+  else brain.history.pop();
+  save();
+  setSuggestions(follow.length ? follow.map((f) => [f, f]) : [], true);
+  currentBubble = null; ctl = null;
+  setBusy(false);
+  if (synth && synth.speaking) orbState = "speaking";
+}
+
+$("#form").onsubmit = (e) => { e.preventDefault(); busy ? stop() : send(input.value); };
+input.addEventListener("input", autosize);
+input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !isPhone()) { e.preventDefault(); if (!busy) send(input.value); } });
+$("#suggest").onclick = (e) => { const b = e.target.closest("button"); if (b) send(b.dataset.q); };
+$("#briefBtn").onclick = () => { setView("chat"); send("Brief me for today: look at my open tasks, timers and what you know about me, then give me a realistic plan for the rest of today in time blocks, the single most important thing to do first, and anything I might be forgetting."); };
+
+/* ---------------- panel forms ---------------- */
+function bindAdd(formSel, inSel, fn) { $(formSel).onsubmit = (e) => { e.preventDefault(); const v = $(inSel).value.trim(); if (!v) return; fn(v); $(inSel).value = ""; save(); renderBrain(); }; }
+bindAdd("#taskForm", "#taskIn", (v) => brain.tasks.push({ id: uid(), text: v, done: false, at: Date.now() }));
+bindAdd("#factForm", "#factIn", (v) => brain.facts.push({ id: uid(), text: v, at: Date.now() }));
+bindAdd("#noteForm", "#noteIn", (v) => brain.notes.push({ id: uid(), title: v.slice(0, 60), body: v, at: Date.now() }));
+bindAdd("#nameForm", "#nameIn", (v) => { brain.name = v; greet(); toast("Juno will call you " + v); });
+
+/* ---------------- settings ---------------- */
+function isDark() { const r = document.documentElement; return r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+function applySettings() {
+  const s = brain.settings;
+  $("#voiceBtn").setAttribute("aria-pressed", String(!!s.voice)); $("#setVoice").checked = !!s.voice;
+  $("#setLarge").checked = !!s.large; document.documentElement.classList.toggle("large", !!s.large);
+  $("#setAutoSend").checked = s.autoSend !== false;
+  $("#setDark").checked = isDark();
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === (s.mode || "smart"))));
+  $("#nameIn").value = brain.name || "";
+}
+document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => { brain.settings.mode = b.dataset.mode; applySettings(); save(); }));
+$("#voiceBtn").onclick = () => { brain.settings.voice = !brain.settings.voice; if (!brain.settings.voice) synth && synth.cancel(); else speak("Voice on.", true); applySettings(); save(); };
+$("#setVoice").onchange = (e) => { brain.settings.voice = e.target.checked; applySettings(); save(); };
+$("#setLarge").onchange = (e) => { brain.settings.large = e.target.checked; applySettings(); save(); };
+$("#setAutoSend").onchange = (e) => { brain.settings.autoSend = e.target.checked; save(); };
+function setTheme(dark) { document.documentElement.dataset.theme = dark ? "dark" : "light"; try { localStorage.setItem("juno-theme", dark ? "dark" : "light"); } catch {} applySettings(); }
+$("#themeBtn").onclick = () => setTheme(!isDark());
+$("#setDark").onchange = (e) => setTheme(e.target.checked);
+try { const th = localStorage.getItem("juno-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
+
+function confirmIn(area, label, fn) {
+  const box = $(area); const orig = box.innerHTML;
+  box.innerHTML = `<div class="confirm"><span>${esc(label)}</span><button class="dangerbtn" id="yes">Yes, erase</button><button class="dangerbtn" style="color:var(--ink)" id="no">Cancel</button></div>`;
+  box.querySelector("#yes").onclick = () => { fn(); box.innerHTML = orig; bindReset(); };
+  box.querySelector("#no").onclick = () => { box.innerHTML = orig; bindReset(); };
+}
+function newChat() { stop(); brain.history = []; chat.innerHTML = ""; welcome(); save(); }
+function bindReset() {
+  $("#clearChat").onclick = () => confirmIn("#resetArea", "Clear the conversation?", () => { newChat(); toast("Conversation cleared"); });
+  $("#wipeAll").onclick = () => confirmIn("#resetArea", "Erase memory, tasks, notes and chat?", () => { const st = brain.settings; brain = blank(); brain.settings = st; timers = []; chat.innerHTML = ""; welcome(); greet(); applySettings(); renderBrain(); save(); toast("Everything erased"); });
+}
+bindReset();
+$("#newBtn").onclick = () => { if (busy) return; newChat(); setView("chat"); toast("New conversation. Memory, tasks and notes stay."); };
+
+/* keyboard */
+document.addEventListener("keydown", (e) => {
+  const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if ((e.key === "/" && !typing) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) { e.preventDefault(); setView("chat"); input.focus(); }
+  else if (e.key === "Escape") { if (busy || (synth && synth.speaking) || listening) stop(); }
+  else if (e.altKey && e.key.toLowerCase() === "m") { e.preventDefault(); startListening(); }
+});
+
+/* ---------------- orb ---------------- */
+let orbState = "idle";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let energy = 0, palette = null;
+function readPalette() { const cs = getComputedStyle(document.documentElement); palette = { accent: cs.getPropertyValue("--accent").trim() || "#0c7f73", coral: cs.getPropertyValue("--coral").trim() || "#e2583c" }; }
+readPalette();
+new MutationObserver(readPalette).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", readPalette);
+function paintOrb(cv, t) {
+  const cx = cv.getContext("2d"); const W = cv.width, H = cv.height, R = W * 0.36;
+  cx.clearRect(0, 0, W, H);
+  const { accent, coral } = palette;
+  const cols = orbState === "listening" ? [coral, accent, "#f2c14e"] : orbState === "thinking" ? [accent, "#6f8cff", accent] : [accent, coral, "#7fd3ff"];
+  for (let i = 0; i < 3; i++) {
+    const sp = 0.0006 + i * 0.00025, ph = i * 2.1;
+    const ox = Math.cos(t * sp * (1 + energy) + ph) * R * 0.28 * (0.5 + energy);
+    const oy = Math.sin(t * sp * 1.3 * (1 + energy) + ph) * R * 0.28 * (0.5 + energy);
+    const pulse = 1 + Math.sin(t * 0.004 + i) * 0.06 * energy;
+    cx.beginPath();
+    for (let k = 0; k <= 64; k++) {
+      const a = (k / 64) * Math.PI * 2;
+      const wob = 1 + 0.07 * (0.4 + energy) * Math.sin(a * 3 + t * 0.002 * (1 + i)) + 0.04 * energy * Math.sin(a * 5 - t * 0.003);
+      const r = R * 0.78 * pulse * wob;
+      const x = W / 2 + ox + Math.cos(a) * r, y = H / 2 + oy + Math.sin(a) * r;
+      k ? cx.lineTo(x, y) : cx.moveTo(x, y);
+    }
+    const g = cx.createRadialGradient(W / 2 + ox, H / 2 + oy, 0, W / 2 + ox, H / 2 + oy, R);
+    g.addColorStop(0, cols[i]); g.addColorStop(1, "rgba(0,0,0,0)");
+    cx.globalAlpha = 0.75; cx.fillStyle = g; cx.fill();
+  }
+  cx.globalAlpha = 1;
+  const hl = cx.createRadialGradient(W * 0.42, H * 0.38, 0, W * 0.42, H * 0.38, R * 0.7);
+  hl.addColorStop(0, "rgba(255,255,255,.55)"); hl.addColorStop(1, "rgba(255,255,255,0)");
+  cx.fillStyle = hl; cx.beginPath(); cx.arc(W / 2, H / 2, R * 0.85, 0, Math.PI * 2); cx.fill();
+}
+const bigOrb = $("#orb"), miniOrb = $("#miniOrb");
+function frame(t) {
+  const target = { idle: 0.15, listening: 1, thinking: 0.55, speaking: 0.8 }[orbState] || 0.15;
+  energy += (target - energy) * 0.06;
+  if (bigOrb.offsetParent) paintOrb(bigOrb, t);
+  if (miniOrb.offsetParent) paintOrb(miniOrb, t);
+  if (!reduce) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (reduce) setInterval(() => frame(performance.now()), 700);
+
+/* ---------------- boot ---------------- */
+function welcome() {
+  chatting(false);
+  setSuggestions(STARTERS);
+}
+function replay() {
+  chat.innerHTML = "";
+  const recent = brain.history.slice(-14);
+  if (!recent.length) return welcome();
+  recent.forEach((m) => (m.role === "user" ? addUser(m.content) : addBot(m.content)));
+  setSuggestions([]);
+}
+
+brain = merge(lsGet());
+applySettings(); greet(); renderBrain(); replay(); autosize();
+setStatus("", "Connecting");
+
+(async () => {
+  const c = window.claude;
+  if (!c || !c.use) { setStatus("local", "Basic mode"); return; }
+  const [s, d, u] = await Promise.all([c.use("sample"), c.use("db"), c.use("user")]);
+  sample = s;
+  if (sample) {
+    try { const lim = await sample.limits(); canTools = !!lim.tools; canImages = !!lim.images; } catch {}
+    $("#attachBtn").hidden = !canImages;
+    if (canImages) $("#fileIn").accept = "image/jpeg,image/png,image/webp,image/gif";
+    setStatus("on", "Brain online");
+  } else setStatus("local", "Basic mode");
+
+  if (d && u) {
+    const id = await u.id();
+    if (id) {
+      docRef = d.doc("data/users/" + id + "/brain");
+      try {
+        const snap = await docRef.get();
+        if (snap.exists) { brain = merge(snap.data()); lsSet(brain); applySettings(); greet(); renderBrain(); replay(); }
+        else flush();
+        $("#brainSub").textContent = "Synced to your account, private to you.";
+      } catch { docRef = null; $("#brainSub").textContent = "Saved on this device only."; }
+    }
+  } else $("#brainSub").textContent = "Saved on this device only.";
+})();
+})();
+</script>
